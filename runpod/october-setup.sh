@@ -1,8 +1,9 @@
 #!/bin/bash
-# October setup for the MiniMax H3 pod (Singularity R2VA, Oct 24 workflows)
+# October setup for the MiniMax H3 pod (Singularity R2VA, Oct 24 workflows + your own workflows)
 COMFY=/workspace/runpod-slim/ComfyUI
 MODELS=$COMFY/models
 BRANCH_URL=https://raw.githubusercontent.com/ttjyo/ComfyUI-Garage/october-snapshot/workflows/minimax
+LIST_URL="https://api.github.com/repos/ttjyo/ComfyUI-Garage/contents/workflows/minimax?ref=october-snapshot"
 WF_DIR=$COMFY/user/default/workflows/minimax
 
 say() { echo "[october-setup] $(date +%H:%M:%S) $*"; }
@@ -35,8 +36,15 @@ for i in $(seq 1 120); do
     sleep 5
 done
 
+# Every .json file in the workflows/minimax folder of the branch gets installed.
+FILES=$(curl -fsSL "$LIST_URL" | python3 -c 'import sys,json; print(" ".join(i["name"] for i in json.load(sys.stdin) if i["name"].endswith(".json")))' 2>/dev/null)
+if [ -z "$FILES" ]; then
+    say "folder list not available, using the built-in list"
+    FILES="MiniMaxH3-Singularity-R2VA-Qwen3.5.json MiniMaxH3-Singularity-R2VA-Multiref-Qwen3.5.json MiniMaxH3-Turbo-I2VA-Qwen3.5.json MiniMaxH3-Turbo-FL2VA-Qwen3.5.json MiniMaxH3-Turbo-T2VA-Qwen3.5.json MiniMaxH3-Turbo-R2VA-Qwen3.5.json MiniMaxH3-Director-Native-Qwen3.5.json MiniMaxH3-Director-Storyboard-Qwen3.5.json"
+fi
+
 mkdir -p "$WF_DIR"
-for f in MiniMaxH3-Singularity-R2VA-Qwen3.5.json MiniMaxH3-Turbo-I2VA-Qwen3.5.json MiniMaxH3-Turbo-FL2VA-Qwen3.5.json MiniMaxH3-Turbo-T2VA-Qwen3.5.json MiniMaxH3-Turbo-R2VA-Qwen3.5.json MiniMaxH3-Director-Native-Qwen3.5.json MiniMaxH3-Director-Storyboard-Qwen3.5.json; do
+for f in $FILES; do
     if wget -q -O "$WF_DIR/$f.tmp" "$BRANCH_URL/$f"; then
         mv -f "$WF_DIR/$f.tmp" "$WF_DIR/$f"
         say "workflow restored: $f"
